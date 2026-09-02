@@ -36,6 +36,29 @@ keyword-based searches. It also never sends anything on your behalf; you do the 
 
 ---
 
+## Architecture
+
+The scanner is a single self-contained React artifact. When you run a scan, it calls the
+**Anthropic Messages API** with an **Apify MCP server** attached as a tool. Claude selects the
+public `bebity/linkedin-jobs-scraper` actor, fetches its input schema, runs it with your search
+terms and location, and returns the matched roles as structured JSON that the UI renders — so the
+same request handles reasoning, tool use, and formatting in one round trip.
+
+**Flow:** `React artifact → Anthropic Messages API (+ Apify MCP server) → LinkedIn Jobs actor → JSON → UI`
+
+**Why keyword search, not the LinkedIn feed:** LinkedIn's own "recommended for you" feed is private
+and not exposed to third-party tools, so no scraper can read it. Instead, the tool translates your
+profile into explicit keyword + location queries — which is honest about what's actually being
+searched, reproducible run to run, and keeps the logic transparent rather than hiding it behind a
+black-box "match" score.
+
+**Design choices worth noting:** a hard location filter (US-remote anywhere, or Atlanta for
+onsite/hybrid) enforced both in the prompt and on the results as a backstop; a salvage JSON parser
+that recovers complete roles even if a response is truncated; and a compact output contract (a few
+fields per role) so the model never overruns its token budget on long job descriptions.
+
+---
+
 ## Setup
 
 ### Prerequisites
